@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- *
+ * <p>
  * http://www.apache.org/licenses/LICENSE-2.0
- *
+ * <p>
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -23,10 +23,11 @@ import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.elasticsearch.common.EsConfig;
 import org.apache.storm.elasticsearch.common.EsTupleMapper;
+import org.apache.storm.utils.TupleUtils;
 
 import java.util.Map;
 
-import static org.elasticsearch.common.base.Preconditions.checkNotNull;
+import static com.google.common.base.Preconditions.checkNotNull;
 
 /**
  * Basic bolt for storing tuple to ES document.
@@ -36,7 +37,8 @@ public class EsIndexBolt extends AbstractEsBolt {
 
     /**
      * EsIndexBolt constructor
-     * @param esConfig Elasticsearch configuration containing node addresses and cluster name {@link EsConfig}
+     *
+     * @param esConfig    Elasticsearch configuration containing node addresses and cluster name {@link EsConfig}
      * @param tupleMapper Tuple to ES document mapper {@link EsTupleMapper}
      */
     public EsIndexBolt(EsConfig esConfig, EsTupleMapper tupleMapper) {
@@ -56,6 +58,11 @@ public class EsIndexBolt extends AbstractEsBolt {
     @Override
     public void execute(Tuple tuple) {
         try {
+            if (TupleUtils.isTick(tuple)) {
+                collector.ack(tuple);
+                return; // Do not try to send ticks to Elastic
+            }
+
             String source = tupleMapper.getSource(tuple);
             String index = tupleMapper.getIndex(tuple);
             String type = tupleMapper.getType(tuple);
